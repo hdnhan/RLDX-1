@@ -46,6 +46,20 @@ dataset_mix = {
             "embodiment_tag": EmbodimentTag.GENERAL_EMBODIMENT,
         },
     ],
+    # Cross-embodiment co-training: one tag per embodiment so each keeps its own
+    # state/action encoder + decoder.
+    "cotrain": [
+        {
+            "dataset_name": "dataset_human",
+            "mix_ratio": 0.9,
+            "embodiment_tag": EmbodimentTag.NEW_EMBODIMENT,
+        },
+        {
+            "dataset_name": "dataset_vdrd",
+            "mix_ratio": 0.1,
+            "embodiment_tag": EmbodimentTag.GENERAL_EMBODIMENT,
+        },
+    ],
     "rldx1_midtrain_droid": [
         {
             "dataset_name": "droid_public",
