@@ -56,6 +56,7 @@ class RLDXConfig(PretrainedConfig):
     # Step 1 — aspect-ratio-preserving resize + m-aligned crop
     image_max_area: int = 65536  # 256 * 256 by default
     image_resize_m: int = 32
+    image_target_hw: tuple[int, int] | None = None  # fixed (H, W); None = aspect-area resize
     # Step 2 — optional fractional crop + resize-back (train: random, eval: center)
     random_crop_fraction: float | None = None  # None = no-op
     # Step 3 — optional photometric / geometric augmentation (train only)

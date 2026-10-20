@@ -25,6 +25,13 @@ MODALITY_CONFIG_PATH="$BASE_DIR/rldx/configs/data/cotrain_config.py"
 CKPT_ROOT="${CKPT_ROOT:-/opt/cotrain/ckpt}"
 CKPT_DIR="$CKPT_ROOT/rldx1/finetuned/$CKPT_NAME"
 
+# Install the per-dataset modality.json from the repo into each dataset's
+# meta/ (dataset_human may still be downloading, so create meta/ if absent).
+for name in dataset_human dataset_vdrd; do
+    mkdir -p "$DATA_ROOT/$name/meta"
+    cp "$BASE_DIR/rldx/configs/data/modality/$name.json" "$DATA_ROOT/$name/meta/modality.json"
+done
+
 # Must equal ACTION_HORIZON in cotrain_config.py (checked at startup).
 ACTION_HORIZON=32
 
@@ -38,6 +45,8 @@ ARGS=(
     --n-cog-tokens 64
     --video-length 4
     --video-stride 2
+    # human (480x640) and vdrd (600x960) must share one image size per batch (motion module).
+    --image-target-hw 192 256
     --action-horizon "$ACTION_HORIZON"
 
     # Keep every sample on its own embodiment's head.
@@ -67,5 +76,7 @@ ARGS=(
 
 cd "$BASE_DIR"
 export MASTER_PORT=$(shuf -i 20000-30000 -n 1)
-uv run torchrun --nproc_per_node="$NUM_GPUS" --master_port="$MASTER_PORT" \
-    rldx/experiment/launch_train.py "${ARGS[@]}"
+# Default runner is the pixi env; override with RUNNER="uv run" for the uv install.
+RUNNER="${RUNNER:-pixi run --environment rldx}"
+$RUNNER torchrun --nproc_per_node="$NUM_GPUS" --master_port="$MASTER_PORT" \
+    rldx/experiment/launch_train.py "${ARGS[@]}" |& tee train.log

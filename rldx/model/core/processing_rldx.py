@@ -204,6 +204,7 @@ class RLDXProcessor(BaseProcessor):
         # Image pipeline (see rldx/data/augmentations.py)
         image_max_area: int = 65536,
         image_resize_m: int = 32,
+        image_target_hw: tuple[int, int] | None = None,
         random_crop_fraction: float | None = None,
         random_rotation_angle: int | None = None,
         color_jitter_params: dict[str, float] | None = None,
@@ -277,6 +278,7 @@ class RLDXProcessor(BaseProcessor):
         # Save image pipeline settings
         self.image_max_area = image_max_area
         self.image_resize_m = image_resize_m
+        self.image_target_hw = tuple(image_target_hw) if image_target_hw is not None else None
         self.random_crop_fraction = random_crop_fraction
         self.random_rotation_angle = random_rotation_angle
         self.color_jitter_params = color_jitter_params
@@ -298,6 +300,7 @@ class RLDXProcessor(BaseProcessor):
             build_image_transformations_albumentations(
                 image_max_area=image_max_area,
                 image_resize_m=image_resize_m,
+                image_target_hw=self.image_target_hw,
                 random_crop_fraction=random_crop_fraction,
                 random_rotation_angle=random_rotation_angle,
                 color_jitter_params=color_jitter_params,
@@ -671,6 +674,7 @@ class RLDXProcessor(BaseProcessor):
                 # Image pipeline settings
                 "image_max_area": self.image_max_area,
                 "image_resize_m": self.image_resize_m,
+                "image_target_hw": self.image_target_hw,
                 "random_crop_fraction": self.random_crop_fraction,
                 "random_rotation_angle": self.random_rotation_angle,
                 "color_jitter_params": self.color_jitter_params,
@@ -766,6 +770,7 @@ class RLDXProcessor(BaseProcessor):
                 # model.config and the processor.
                 "image_max_area",
                 "image_resize_m",
+                "image_target_hw",
                 "random_crop_fraction",
                 "formalize_language",
                 "apply_sincos_state_encoding",

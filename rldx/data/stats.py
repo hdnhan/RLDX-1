@@ -48,6 +48,9 @@ LE_ROBOT_DATA_FILENAME = "data/*/*.parquet"
 LE_ROBOT_INFO_FILENAME = "meta/info.json"
 LE_ROBOT_STATS_FILENAME = "meta/stats.json"
 LE_ROBOT_REL_STATS_FILENAME = "meta/relative_stats.json"
+# Every Nth frame is used for relative-action stats: all frames of a large dataset
+# would take hours and tens of GB of RAM, and the quantiles barely change.
+REL_STATS_FRAME_STRIDE = 30
 
 
 def calculate_dataset_statistics(
@@ -163,7 +166,7 @@ class RelativeActionLoader:
         )
         self.loader = LeRobotEpisodeLoader(dataset_path, self.modality_configs)
 
-    def load_relative_actions(self, trajectory_id: int) -> list[np.ndarray]:
+    def load_relative_actions(self, trajectory_id: int, frame_stride: int = 1) -> list[np.ndarray]:
         df = self.loader[trajectory_id]
 
         # OPTIMIZATION: Extract columns once and convert to numpy arrays
@@ -180,13 +183,13 @@ class RelativeActionLoader:
         trajectories = []
         usable_length = len(df) - self.modality_configs["action"].delta_indices[-1]
         action_delta_indices = np.array(self.modality_configs["action"].delta_indices)
-        for i in range(usable_length):
+        for i in range(0, usable_length, frame_stride):
             state_ind = self.modality_configs["state"].delta_indices[-1] + i
             action_inds = action_delta_indices + i
             last_state = state_data[state_ind]
             actions = action_data[action_inds]
             if self.action_config.type == ActionType.EEF:
-                # raise NotImplementedError("EEF action is not yet supported")
+                actions = np.stack(actions)
                 assert len(last_state) == 9  # xyz + rot6d
                 assert actions.shape[1] == 9  # xyz + rot6d
 
@@ -202,10 +205,7 @@ class RelativeActionLoader:
                         for m in actions
                     ]
                 ).relative_chunking(reference_frame=reference_frame)
-
-                raise NotImplementedError(
-                    "EEF action is not yet supported, need to handle rotation transformation based on action format"
-                )
+                trajectories.append(traj.to(self.action_config.format).astype(np.float32))
             elif self.action_config.type == ActionType.NON_EEF:
                 reference_frame = JointPose(last_state)
                 traj = JointActionChunk([JointPose(m) for m in actions]).relative_chunking(
@@ -225,13 +225,14 @@ def calculate_stats_for_key(
     embodiment_tag: EmbodimentTag,
     group_key: str,
     max_episodes: int = -1,
+    frame_stride: int = 1,
 ) -> dict:
     loader = RelativeActionLoader(dataset_path, embodiment_tag, group_key)
     trajectories = []
     for episode_id in tqdm(range(len(loader)), desc=f"Loading trajectories for key {group_key}"):
         if max_episodes != -1 and episode_id >= max_episodes:
             break
-        trajectories.extend(loader.load_relative_actions(episode_id))
+        trajectories.extend(loader.load_relative_actions(episode_id, frame_stride))
     return {
         "max": np.max(trajectories, axis=0),
         "min": np.min(trajectories, axis=0),
@@ -262,7 +263,9 @@ def generate_rel_stats(dataset_path: Path | str, embodiment_tag: EmbodimentTag) 
         if action_key in stats:
             continue
         print(f"Generating relative stats for {dataset_path} {embodiment_tag} {action_key}")
-        stats[action_key] = calculate_stats_for_key(dataset_path, embodiment_tag, action_key)
+        stats[action_key] = calculate_stats_for_key(
+            dataset_path, embodiment_tag, action_key, frame_stride=REL_STATS_FRAME_STRIDE
+        )
     with open(stats_path, "w") as f:
         json.dump(to_json_serializable(dict(stats)), f, indent=4)
 

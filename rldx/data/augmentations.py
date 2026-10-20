@@ -154,11 +154,13 @@ class AspectAreaResizeAndCrop(A.DualTransform):
         interpolation: int = cv2.INTER_AREA,
         p: float = 1.0,
         always_apply: bool | None = None,
+        target_hw: tuple[int, int] | None = None,
     ):
         super().__init__(p=p, always_apply=always_apply)
         self.max_area = max_area
         self.m = m
         self.interpolation = interpolation
+        self.target_hw = tuple(target_hw) if target_hw is not None else None
 
     def apply(self, img, resize_hw=(0, 0), crop_coords=(0, 0, 0, 0), **params):
         h_r, w_r = resize_hw
@@ -168,9 +170,16 @@ class AspectAreaResizeAndCrop(A.DualTransform):
 
     def get_params_dependent_on_data(self, params, data):
         h, w = params["shape"][:2]
-        (h_r, w_r), (h_c, w_c) = resize_preserve_aspect_area_then_crop(
-            h, w, max_area=self.max_area, m=self.m
-        )
+        if self.target_hw is not None:
+            # Fixed output size for every source resolution: scale to cover the
+            # target (aspect preserved), then center-crop to exactly (h_c, w_c).
+            h_c, w_c = self.target_hw
+            scale = max(h_c / h, w_c / w)
+            h_r, w_r = max(h_c, round(h * scale)), max(w_c, round(w * scale))
+        else:
+            (h_r, w_r), (h_c, w_c) = resize_preserve_aspect_area_then_crop(
+                h, w, max_area=self.max_area, m=self.m
+            )
         shape_key = (h, w)
         if shape_key not in AspectAreaResizeAndCrop._logged_shapes:
             AspectAreaResizeAndCrop._logged_shapes.add(shape_key)
@@ -185,7 +194,7 @@ class AspectAreaResizeAndCrop(A.DualTransform):
         }
 
     def get_transform_init_args_names(self):
-        return ("max_area", "m", "interpolation")
+        return ("max_area", "m", "interpolation", "target_hw")
 
 
 # ---------------------------------------------------------------------------
@@ -270,6 +279,7 @@ def build_image_transformations_albumentations(
     random_crop_fraction: float | None = None,
     random_rotation_angle: int | None = None,
     color_jitter_params: dict | None = None,
+    image_target_hw: tuple[int, int] | None = None,
 ) -> tuple[A.BaseCompose, A.BaseCompose]:
     """Build the ``(train_transform, eval_transform)`` pair.
 
@@ -282,6 +292,10 @@ def build_image_transformations_albumentations(
     Args:
         image_max_area: Area budget for step 1 (default ``256*256 = 65536``).
         image_resize_m: Alignment multiple for step 1 (default ``32``).
+        image_target_hw: Optional fixed ``(H, W)`` output for step 1. Overrides
+            ``image_max_area`` / ``image_resize_m``; use it when datasets with
+            different resolutions share a batch (the motion module needs one
+            patch grid per batch).
         random_crop_fraction: Crop fraction for step 2. None = no-op (no
             step-2 crop, transforms produce step-1 output directly).
         random_rotation_angle: Optional ``A.Rotate(limit=...)`` (train only).
@@ -294,12 +308,18 @@ def build_image_transformations_albumentations(
     """
     train_list: list = [
         AspectAreaResizeAndCrop(
-            max_area=image_max_area, m=image_resize_m, interpolation=cv2.INTER_AREA
+            max_area=image_max_area,
+            m=image_resize_m,
+            interpolation=cv2.INTER_AREA,
+            target_hw=image_target_hw,
         )
     ]
     eval_list: list = [
         AspectAreaResizeAndCrop(
-            max_area=image_max_area, m=image_resize_m, interpolation=cv2.INTER_AREA
+            max_area=image_max_area,
+            m=image_resize_m,
+            interpolation=cv2.INTER_AREA,
+            target_hw=image_target_hw,
         )
     ]
 

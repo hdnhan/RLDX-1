@@ -363,6 +363,7 @@ class RLDXPipeline(ModelPipeline):
                 modality_configs=self.config.data.modality_configs,
                 image_max_area=self.model_config.image_max_area,
                 image_resize_m=self.model_config.image_resize_m,
+                image_target_hw=self.model_config.image_target_hw,
                 random_crop_fraction=self.model_config.random_crop_fraction,
                 random_rotation_angle=self.model_config.random_rotation_angle,
                 color_jitter_params=self.model_config.color_jitter_params,
@@ -395,6 +396,7 @@ class RLDXPipeline(ModelPipeline):
                 embodiment_id_mapping=self._get_embodiment_id_mapping(),  # By default is None, so this will be set later.
                 image_max_area=self.model_config.image_max_area,
                 image_resize_m=self.model_config.image_resize_m,
+                image_target_hw=self.model_config.image_target_hw,
                 random_crop_fraction=self.model_config.random_crop_fraction,
                 random_rotation_angle=self.model_config.random_rotation_angle,
                 color_jitter_params=self.model_config.color_jitter_params,

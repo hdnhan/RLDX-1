@@ -311,6 +311,12 @@ class TrainConfig:
     """Alignment multiple for both output dimensions after the aspect-area resize.
     Defaults to 32."""
 
+    image_target_hw: tuple[int, int] | None = None
+    """Optional fixed (H, W) output size for every camera view, e.g. ``192 256``.
+    Images are scaled to cover it (aspect preserved) and center-cropped. Overrides
+    ``image_max_area`` / ``image_resize_m``. Required when co-training datasets of
+    different resolutions with the motion module, which needs one patch grid per batch."""
+
     random_crop_fraction: float | None = None
     """Optional fractional crop applied after the aspect-area resize.
     Training uses a random crop position; evaluation uses a center crop.

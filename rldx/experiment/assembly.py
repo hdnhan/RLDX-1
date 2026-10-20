@@ -166,6 +166,7 @@ def _apply_cli_model_overrides(
     run_config.model.state_dropout_prob = cli.state_dropout_prob
     run_config.model.image_max_area = cli.image_max_area
     run_config.model.image_resize_m = cli.image_resize_m
+    run_config.model.image_target_hw = cli.image_target_hw
     run_config.model.random_crop_fraction = cli.random_crop_fraction
     run_config.model.random_rotation_angle = cli.random_rotation_angle
     run_config.model.color_jitter_params = cli.color_jitter_params
