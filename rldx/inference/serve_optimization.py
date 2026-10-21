@@ -163,6 +163,8 @@ def _build_graph_safe_vla_from_real_inputs(
     def _load(modname, relpath):
         spec = _ilu.spec_from_file_location(modname, os.path.join(_INF_DIR, relpath))
         mod = _ilu.module_from_spec(spec)
+        # Dynamo re-imports globals' modules by name while tracing.
+        sys.modules[modname] = mod
         spec.loader.exec_module(mod)
         return mod
 
@@ -195,7 +197,10 @@ def _build_graph_safe_vla_from_real_inputs(
             dtype=dtype,
         ).eval()
         n_cog_mem = memory_config["memory_n_cog_tokens"]
-        n_vl = n_vl_raw + n_cog_mem if memory_config["concat_memory"] else n_vl_raw
+        # _process_memory keeps only the last n_cog_tokens of the backbone output
+        # (backbone runs cog_mode="full" with memory), so size from that, not n_vl_raw.
+        n_q = memory_config["n_cog_tokens"]
+        n_vl = n_q + n_cog_mem if memory_config["concat_memory"] else n_q
     else:
         n_vl = n_vl_raw
 
@@ -367,6 +372,7 @@ class _CompiledDispatcher:
                 "_cvc", os.path.join(_INF_DIR, "engine", "custom_vla_chain.py")
             )
             _cvc_mod = _ilu.module_from_spec(_sp)
+            sys.modules["_cvc"] = _cvc_mod
             _sp.loader.exec_module(_cvc_mod)
             build_custom_vla_chain = _cvc_mod.build_custom_vla_chain
             compile_custom_vla_chain = _cvc_mod.compile_custom_vla_chain
@@ -399,6 +405,7 @@ class _CompiledDispatcher:
                 "_cg", os.path.join(_INF_DIR, "engine", "cuda_graph.py")
             )
             _cg_mod = _ilu.module_from_spec(_sp)
+            sys.modules["_cg"] = _cg_mod
             _sp.loader.exec_module(_cg_mod)
             setup_vla_cuda_graph = _cg_mod.setup_vla_cuda_graph
             prefix_buf = self._buffers.get("prefix_actions")
