@@ -7,7 +7,7 @@ BASE_DIR="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 # Override via environment, e.g.:
 #   STEP=3000 EMBODIMENT_TAG=GENERAL_EMBODIMENT PORT=6666 bash serve_cotrain.sh
 # =========================================
-CKPT_ROOT="${CKPT_ROOT:-/opt/cotrain/ckpt/rldx1/finetuned/rldx1_cotrain/rldx1_cotrain}"
+CKPT_ROOT="${CKPT_ROOT:-$BASE_DIR/ckpt}"
 STEP="${STEP:-5000}"
 EMBODIMENT_TAG="${EMBODIMENT_TAG:-GENERAL_EMBODIMENT}"  # or NEW_EMBODIMENT
 HOST="${HOST:-0.0.0.0}"

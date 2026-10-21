@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="Co-train RLDX-1"
 #SBATCH --nodes=1
-#SBATCH --gpus=1
+#SBATCH --gpus=2
 #SBATCH --output=slurm_out/%j-rldx1_cotrain.out
 #SBATCH --error=slurm_out/%j-rldx1_cotrain.err
 
@@ -14,16 +14,24 @@ BASE_MODEL_PATH="${BASE_MODEL_PATH:-RLWRLD/RLDX-1-PT}"
 CKPT_NAME="rldx1_cotrain"
 RUN_NAME="$CKPT_NAME"
 
-NUM_GPUS="${NUM_GPUS:-1}"
-MICRO_BATCH_PER_GPU="${MICRO_BATCH_PER_GPU:-8}"
-GRAD_ACCUM="${GRAD_ACCUM:-8}"
-GLOBAL_BATCH=$(( MICRO_BATCH_PER_GPU * NUM_GPUS ))  # effective = GLOBAL_BATCH * GRAD_ACCUM = 64
+NUM_GPUS="${NUM_GPUS:-2}"
+# 4/GPU is sized for 80 GB H100s (measured ~3.5 GB per sample on top of the static
+# state; 8/GPU needed ~80 GB unsharded on 1 GPU). Try MICRO_BATCH_PER_GPU=8 for speed.
+MICRO_BATCH_PER_GPU="${MICRO_BATCH_PER_GPU:-4}"
+EFFECTIVE_BATCH="${EFFECTIVE_BATCH:-64}"
+GLOBAL_BATCH=$(( MICRO_BATCH_PER_GPU * NUM_GPUS ))
+# Keep the effective batch (GLOBAL_BATCH * GRAD_ACCUM) fixed at 64 regardless of GPU count.
+GRAD_ACCUM="${GRAD_ACCUM:-$(( EFFECTIVE_BATCH / GLOBAL_BATCH ))}"
+if (( GRAD_ACCUM < 1 )); then
+    echo "EFFECTIVE_BATCH=$EFFECTIVE_BATCH is smaller than MICRO_BATCH_PER_GPU*NUM_GPUS=$GLOBAL_BATCH" >&2
+    exit 1
+fi
 BASE_DIR="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 DATA_ROOT="${DATA_ROOT:-/opt/cotrain/datasets}"  # parent dir of dataset_human + dataset_vdrd
 DATA_MIX="cotrain"
 MODALITY_CONFIG_PATH="$BASE_DIR/rldx/configs/data/cotrain_config.py"
-CKPT_ROOT="${CKPT_ROOT:-/opt/cotrain/ckpt}"
-CKPT_DIR="$CKPT_ROOT/rldx1/finetuned/$CKPT_NAME"
+CKPT_ROOT="${CKPT_ROOT:-$BASE_DIR/ckpt}"
+CKPT_DIR="$CKPT_ROOT/$CKPT_NAME"
 
 # Install the per-dataset modality.json from the repo into each dataset's
 # meta/ (dataset_human may still be downloading, so create meta/ if absent).
