@@ -76,40 +76,40 @@ vdrd = {
     "state": ModalityConfig(
         delta_indices=[0],
         modality_keys=[
-            "left_arm_joints",  # 7
-            "right_arm_joints",  # 7
-            "left_hand_joints",  # 6
-            "right_hand_joints",  # 6
+            "left_arm",  # 7
+            "right_arm",  # 7
+            "left_hand",  # 6
+            "right_hand",  # 6
         ],
     ),
     "action": ModalityConfig(
         delta_indices=list(range(ACTION_HORIZON)),
         modality_keys=[
-            "left_arm_joints",  # 7
-            "right_arm_joints",  # 7
-            "left_hand_joints",  # 6
-            "right_hand_joints",  # 6
+            "left_arm",  # 7
+            "right_arm",  # 7
+            "left_hand",  # 6
+            "right_hand",  # 6
         ],
         action_configs=[
-            # left_arm_joints: chunk expressed relative to current joint positions
+            # left_arm: chunk expressed relative to current joint positions
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
                 type=ActionType.NON_EEF,
                 format=ActionFormat.DEFAULT,
             ),
-            # right_arm_joints
+            # right_arm
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
                 type=ActionType.NON_EEF,
                 format=ActionFormat.DEFAULT,
             ),
-            # left_hand_joints
+            # left_hand
             ActionConfig(
                 rep=ActionRepresentation.ABSOLUTE,
                 type=ActionType.NON_EEF,
                 format=ActionFormat.DEFAULT,
             ),
-            # right_hand_joints
+            # right_hand
             ActionConfig(
                 rep=ActionRepresentation.ABSOLUTE,
                 type=ActionType.NON_EEF,
