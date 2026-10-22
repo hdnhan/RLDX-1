@@ -3,12 +3,10 @@ set -euo pipefail
 BASE_DIR="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 
 # =========================================
-# Serve a co-trained RLDX-1 checkpoint over ZeroMQ.
+# Serve a RLDX-1 checkpoint over ZeroMQ.
 # Override via environment, e.g.:
-#   STEP=3000 EMBODIMENT_TAG=GENERAL_EMBODIMENT PORT=6666 bash serve_cotrain.sh
+#   CKPT_PATH=checkpoint-2000 bash run_scripts/deploy/serve.sh
 # =========================================
-CKPT_ROOT="${CKPT_ROOT:-$BASE_DIR/ckpt}"
-STEP="${STEP:-5000}"
 EMBODIMENT_TAG="${EMBODIMENT_TAG:-GENERAL_EMBODIMENT}"  # or NEW_EMBODIMENT
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-6666}"
@@ -25,7 +23,7 @@ RTC_EXEC_HORIZON="${RTC_EXEC_HORIZON:-16}"
 
 pixi run --manifest-path "$BASE_DIR/pixi.toml" --environment "${PIXI_ENV:-rldx}" python -u \
     "$BASE_DIR/rldx/eval/run_rldx_server.py" \
-    --model-path "$CKPT_ROOT/checkpoint-$STEP" \
+    --model-path "$CKPT_PATH" \
     --embodiment-tag "$EMBODIMENT_TAG" \
     --host "$HOST" --port "$PORT" \
     --device "$DEVICE" 

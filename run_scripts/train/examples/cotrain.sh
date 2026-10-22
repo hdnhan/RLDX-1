@@ -32,6 +32,8 @@ DATA_MIX="cotrain"
 MODALITY_CONFIG_PATH="$BASE_DIR/rldx/configs/data/cotrain_config.py"
 CKPT_ROOT="${CKPT_ROOT:-$BASE_DIR/ckpt}"
 CKPT_DIR="$CKPT_ROOT/$CKPT_NAME"
+NUM_WORKERS="${NUM_WORKERS:-4}"
+SHARD_SIZE="${SHARD_SIZE:-256}"
 
 # Install the per-dataset modality.json from the repo into each dataset's
 # meta/ (dataset_human may still be downloading, so create meta/ if absent).
@@ -61,14 +63,15 @@ ARGS=(
     --general-embodiment-train-ratio 0
     --state-dropout-prob 0.3
 
-    --dataloader-num-workers 8
+    --dataloader-num-workers "$NUM_WORKERS"
+    --shard-size "$SHARD_SIZE"
     --output-dir "$CKPT_DIR"
     --num-gpus "$NUM_GPUS"
     --global-batch-size "$GLOBAL_BATCH"
     --gradient-accumulation-steps "$GRAD_ACCUM"
     --learning-rate 1e-4
-    --max-steps 100000
-    --save-steps 1000
+    --max-steps 30000
+    --save-steps 500
     --save-total-limit 5
 
     # Add-ons. With a 32-step chunk, execute ~16 steps per replan; set

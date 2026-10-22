@@ -74,8 +74,8 @@ ARGS=(
     --global-batch-size "$GLOBAL_BATCH"
     --gradient-accumulation-steps "$GRAD_ACCUM"
     --learning-rate 1e-4
-    --max-steps 60000
-    --save-steps 1000
+    --max-steps 30000
+    --save-steps 500
     --save-total-limit 5
 
     # Add-ons. With a 32-step chunk, execute ~16 steps per replan; set
