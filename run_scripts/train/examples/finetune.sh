@@ -42,6 +42,13 @@ CKPT_DIR="$CKPT_ROOT/rldx1/finetuned/$CKPT_NAME"
 mkdir -p "$DATASET_PATH/meta"
 cp "$BASE_DIR/rldx/configs/data/modality/dataset_vdrd3.json" "$DATASET_PATH/meta/modality.json"
 
+# Host-RAM knobs. Each dataloader worker caches one shard of SHARD_SIZE fully
+# processed timesteps (4 frames x 3 cameras each) and prefetches the next, so host
+# memory ~ ranks x workers x 2 x SHARD_SIZE. The defaults (8 x 2 x 256) are ~8x
+# lighter than the old 16 x 2 x 1024, which got workers OOM-killed on a 2-GPU node.
+NUM_WORKERS="${NUM_WORKERS:-4}"
+SHARD_SIZE="${SHARD_SIZE:-256}"
+
 # Must equal ACTION_HORIZON in vdrd3_config.py (checked at startup).
 ACTION_HORIZON=32
 
@@ -60,7 +67,8 @@ ARGS=(
 
     --state-dropout-prob 0.3
 
-    --dataloader-num-workers 8
+    --dataloader-num-workers "$NUM_WORKERS"
+    --shard-size "$SHARD_SIZE"
     --output-dir "$CKPT_DIR"
     --num-gpus "$NUM_GPUS"
     --global-batch-size "$GLOBAL_BATCH"
