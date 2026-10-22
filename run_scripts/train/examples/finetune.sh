@@ -1,57 +1,82 @@
 #!/bin/bash
-#SBATCH --job-name="Finetune RLDX-1 on custom dataset"
+#SBATCH --job-name="Finetune RLDX-1 on vdrd3"
 #SBATCH --nodes=1
-#SBATCH --gpus=8
-#SBATCH --output=slurm_out/%j-rldx1_ft_custom.out
-#SBATCH --error=slurm_out/%j-rldx1_ft_custom.err
+#SBATCH --gpus=2
+#SBATCH --output=slurm_out/%j-rldx1_ft_vdrd3.out
+#SBATCH --error=slurm_out/%j-rldx1_ft_vdrd3.err
 
 set -euo pipefail
 
-# Custom-dataset fine-tune template — vanilla video VLA on your LeRobot
-# dataset(s). Toggle motion / memory / physics by uncommenting lines in the
-# ARGS array below. Edit dataset paths, modality config, and step counts
-# in-place. See run_scripts/train/examples/README.md for details.
+# Single-dataset fine-tune on vdrd3 (head + left/right realsense cameras),
+# with the same add-ons as cotrain.sh (RTC training, memory, motion).
+# See run_scripts/train/examples/README.md for details.
 
 export WANDB_PROJECT="${WANDB_PROJECT:-rldx-finetune}"
 export NO_ALBUMENTATIONS_UPDATE=1
 
 BASE_MODEL_PATH="${BASE_MODEL_PATH:-RLWRLD/RLDX-1-PT}"
-CKPT_NAME="rldx1_ft_custom"
+CKPT_NAME="rldx1_ft_vdrd3"
 RUN_NAME="$CKPT_NAME"
 
-NUM_GPUS=8
-BASE_DIR="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
-EMBODIMENT_TAG="GENERAL_EMBODIMENT"  # or OXE_FRACTAL / OXE_BRIDGE_ORIG / ...
-MODALITY_CONFIG_PATH="$BASE_DIR/rldx/configs/data/your_dataset_config.py"  # see rldx/configs/data/ for examples
-CKPT_DIR="$BASE_DIR/ckpt/rldx1/finetuned/$CKPT_NAME"
+NUM_GPUS="${NUM_GPUS:-2}"
+# 4/GPU is sized for 80 GB H100s (see cotrain.sh); with 3 cameras the activations
+# are larger than in cotrain, so lower this first if you hit OOM.
+MICRO_BATCH_PER_GPU="${MICRO_BATCH_PER_GPU:-4}"
+EFFECTIVE_BATCH="${EFFECTIVE_BATCH:-64}"
+GLOBAL_BATCH=$(( MICRO_BATCH_PER_GPU * NUM_GPUS ))
+# Keep the effective batch (GLOBAL_BATCH * GRAD_ACCUM) fixed regardless of GPU count.
+GRAD_ACCUM="${GRAD_ACCUM:-$(( EFFECTIVE_BATCH / GLOBAL_BATCH ))}"
+if (( GRAD_ACCUM < 1 )); then
+    echo "EFFECTIVE_BATCH=$EFFECTIVE_BATCH is smaller than MICRO_BATCH_PER_GPU*NUM_GPUS=$GLOBAL_BATCH" >&2
+    exit 1
+fi
+# Under sbatch, $0 is a spooled copy outside the repo, so resolve from the submit dir.
+BASE_DIR="$(git -C "${SLURM_SUBMIT_DIR:-$(dirname "$0")}" rev-parse --show-toplevel)"
+DATASET_PATH="${DATASET_PATH:-/opt/cotrain/datasets/dataset_vdrd3}"
+EMBODIMENT_TAG="GENERAL_EMBODIMENT"
+MODALITY_CONFIG_PATH="$BASE_DIR/rldx/configs/data/vdrd3_config.py"
+CKPT_ROOT="${CKPT_ROOT:-$BASE_DIR/ckpt}"
+CKPT_DIR="$CKPT_ROOT/rldx1/finetuned/$CKPT_NAME"
+
+# Install the repo's modality.json into the dataset's meta/.
+mkdir -p "$DATASET_PATH/meta"
+cp "$BASE_DIR/rldx/configs/data/modality/dataset_vdrd3.json" "$DATASET_PATH/meta/modality.json"
+
+# Must equal ACTION_HORIZON in vdrd3_config.py (checked at startup).
+ACTION_HORIZON=32
 
 ARGS=(
-    --n-cog-tokens 64
-    --video-length 4
-
-    # Dataset (uncomment the multi-dataset line to mix datasets instead;
-    # --dataset-paths takes precedence over --dataset-path at runtime)
-    --dataset-path "/path/to/your/lerobot_dataset"
-    # --dataset-paths "/path/a" "/path/b" --dataset-mix-ratios 1.0 0.5
-
-    --dataloader-num-workers 8
+    --base-model-path "$BASE_MODEL_PATH"
+    --dataset-path "$DATASET_PATH"
     --embodiment-tag "$EMBODIMENT_TAG"
     --modality-config-path "$MODALITY_CONFIG_PATH"
-    --base-model-path "$BASE_MODEL_PATH"
+
+    # Shapes — match RLDX-1-PT (video input)
+    --n-cog-tokens 64
+    --video-length 4
+    --video-stride 2
+    --image-target-hw 192 256
+    --action-horizon "$ACTION_HORIZON"
+
+    --state-dropout-prob 0.3
+
+    --dataloader-num-workers 8
     --output-dir "$CKPT_DIR"
     --num-gpus "$NUM_GPUS"
-    --save-total-limit 5
-    --save-steps 1000
+    --global-batch-size "$GLOBAL_BATCH"
+    --gradient-accumulation-steps "$GRAD_ACCUM"
+    --learning-rate 1e-4
     --max-steps 60000
-    --global-batch-size 256
+    --save-steps 1000
+    --save-total-limit 5
 
-    # Add-ons (uncomment any to enable)
-
-    # Motion: discrete action-prefix tokens injected mid-backbone.
-    # --use-motion --motion-insert-layer 9
-
-    # Memory: cross-clip context tokens for long-horizon manipulation.
-    # --use-memory --memory-length 4 --memory-stride 16 --memory-n-cog-tokens 16 --concat-memory
+    # Add-ons. With a 32-step chunk, execute ~16 steps per replan; set
+    # --memory-stride to that number and keep the RTC delay below it.
+    --rtc-training-max-delay 8
+    --use-memory --memory-length 4 --memory-stride 16 --memory-n-cog-tokens 16 --concat-memory --memory-dropout-prob 0.3
+    --use-motion --motion-insert-layer 9
+    # Warms up the newly-initialized add-on weights (recommended with add-ons).
+    # --new-param-warmup-steps 2000
 
     # Physics: per-step force/torque head; match keys/dims to your schema.
     # --use-physics --physics-keys torque --physics-dims 48 --allow-missing-physics
@@ -63,5 +88,7 @@ ARGS=(
 
 cd "$BASE_DIR"
 export MASTER_PORT=$(shuf -i 20000-30000 -n 1)
-uv run torchrun --nproc_per_node=$NUM_GPUS --master_port=$MASTER_PORT \
-    rldx/experiment/launch_train.py "${ARGS[@]}"
+# Default runner is the pixi env; override with RUNNER="uv run" for the uv install.
+RUNNER="${RUNNER:-pixi run --environment rldx}"
+$RUNNER torchrun --nproc_per_node="$NUM_GPUS" --master_port="$MASTER_PORT" \
+    rldx/experiment/launch_train.py "${ARGS[@]}" |& tee train.log
