@@ -51,12 +51,12 @@ dataset_mix = {
     "cotrain": [
         {
             "dataset_name": "dataset_human",
-            "mix_ratio": 0.9,
+            "mix_ratio": 0.7,
             "embodiment_tag": EmbodimentTag.NEW_EMBODIMENT,
         },
         {
             "dataset_name": "dataset_vdrd",
-            "mix_ratio": 0.1,
+            "mix_ratio": 0.3,
             "embodiment_tag": EmbodimentTag.GENERAL_EMBODIMENT,
         },
     ],
