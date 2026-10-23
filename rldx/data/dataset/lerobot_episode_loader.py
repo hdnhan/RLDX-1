@@ -169,12 +169,12 @@ class LeRobotEpisodeLoader:
         # Load episode metadata (one episode per line)
         episodes_path = meta_dir / LEROBOT_EPISODES_FILENAME
         with open(episodes_path, "r") as f:
-            self.episodes_metadata = [json.loads(line) for line in f]
+            self.episodes_metadata = [json.loads(line) for line in f if line.strip()]
 
         # Load task descriptions and create mapping
         tasks_path = meta_dir / LEROBOT_TASKS_FILENAME
         with open(tasks_path, "r") as f:
-            tasks_data = [json.loads(line) for line in f]
+            tasks_data = [json.loads(line) for line in f if line.strip()]
             self.tasks_map = {task["task_index"]: task["task"] for task in tasks_data}
 
         # Load modality structure information

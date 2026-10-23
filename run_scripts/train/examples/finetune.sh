@@ -75,14 +75,14 @@ ARGS=(
     --gradient-accumulation-steps "$GRAD_ACCUM"
     --learning-rate 1e-4
     --max-steps 30000
-    --save-steps 500
+    --save-steps 1000
     --save-total-limit 5
 
     # Add-ons. With a 32-step chunk, execute ~16 steps per replan; set
     # --memory-stride to that number and keep the RTC delay below it.
-    --rtc-training-max-delay 8
-    --use-memory --memory-length 4 --memory-stride 16 --memory-n-cog-tokens 16 --concat-memory --memory-dropout-prob 0.3
-    --use-motion --motion-insert-layer 9
+    # --rtc-training-max-delay 8
+    # --use-memory --memory-length 4 --memory-stride 16 --memory-n-cog-tokens 16 --concat-memory --memory-dropout-prob 0.3
+    # --use-motion --motion-insert-layer 9
     # Warms up the newly-initialized add-on weights (recommended with add-ons).
     # --new-param-warmup-steps 2000
 
@@ -96,7 +96,5 @@ ARGS=(
 
 cd "$BASE_DIR"
 export MASTER_PORT=$(shuf -i 20000-30000 -n 1)
-# Default runner is the pixi env; override with RUNNER="uv run" for the uv install.
-RUNNER="${RUNNER:-pixi run --environment rldx}"
-$RUNNER torchrun --nproc_per_node="$NUM_GPUS" --master_port="$MASTER_PORT" \
+uv run torchrun --nproc_per_node="$NUM_GPUS" --master_port="$MASTER_PORT" \
     rldx/experiment/launch_train.py "${ARGS[@]}" |& tee train.log
