@@ -71,7 +71,7 @@ human = {
 vdrd = {
     "video": ModalityConfig(
         delta_indices=[0],
-        modality_keys=["head_camera"],
+        modality_keys=["head_camera", "left_camera", "right_camera"],
     ),
     "state": ModalityConfig(
         delta_indices=[0],
