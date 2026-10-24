@@ -10,8 +10,8 @@ set -euo pipefail
 export WANDB_PROJECT="${WANDB_PROJECT:-rldx}"
 export NO_ALBUMENTATIONS_UPDATE=1
 
-BASE_MODEL_PATH="${BASE_MODEL_PATH:-RLWRLD/RLDX-1-PT}"
-CKPT_NAME="${CKPT_NAME:-rldx1_cotrain}"
+BASE_MODEL_PATH="${BASE_MODEL_PATH:-RLWRLD/RLDX-1-PT-IMG}"
+CKPT_NAME="${CKPT_NAME:-rldx1_cotrain_img}"
 RUN_NAME="$CKPT_NAME"
 
 NUM_GPUS="${NUM_GPUS:-2}"
@@ -51,10 +51,9 @@ ARGS=(
     --pt-dataset-mix "$DATA_MIX"
     --modality-config-path "$MODALITY_CONFIG_PATH"
 
-    # Shapes — match RLDX-1-PT (video input)
+    # Shapes — match RLDX-1-PT-IMG (image input: single frame)
     --n-cog-tokens 64
-    --video-length 4
-    --video-stride 2
+    --video-length 1
     # human (480x640) and vdrd (600x960) must share one image size per batch (motion module).
     --image-target-hw 192 256
     --action-horizon "$ACTION_HORIZON"
@@ -70,7 +69,7 @@ ARGS=(
     --global-batch-size "$GLOBAL_BATCH"
     --gradient-accumulation-steps "$GRAD_ACCUM"
     --learning-rate 1e-4
-    --max-steps 30000
+    --max-steps 100000
     --save-steps 1000
     --save-total-limit 5
 
