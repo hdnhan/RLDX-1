@@ -20,8 +20,8 @@ human = {
     "state": ModalityConfig(
         delta_indices=[0],
         modality_keys=[
-            "left_eef_pose",  # 9 (xyz + rot6d)
-            "right_eef_pose",  # 9 (xyz + rot6d)
+            "left_eef_pose",  # 6
+            "right_eef_pose",  # 6
             "left_hand_joints",  # 6
             "right_hand_joints",  # 6
         ],
@@ -39,13 +39,13 @@ human = {
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
                 type=ActionType.EEF,
-                format=ActionFormat.XYZ_ROT6D,
+                format=ActionFormat.XYZ_ROTVEC,
             ),
             # right_eef_pose
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
                 type=ActionType.EEF,
-                format=ActionFormat.XYZ_ROT6D,
+                format=ActionFormat.XYZ_ROTVEC,
             ),
             # left_hand_joints
             ActionConfig(
@@ -71,7 +71,7 @@ human = {
 vdrd = {
     "video": ModalityConfig(
         delta_indices=[0],
-        modality_keys=["head_camera", "left_camera", "right_camera"],
+        modality_keys=["head_camera"],
     ),
     "state": ModalityConfig(
         delta_indices=[0],
