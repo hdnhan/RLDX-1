@@ -39,13 +39,13 @@ human = {
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
                 type=ActionType.EEF,
-                format=ActionFormat.XYZ_ROTVEC,
+                format=ActionFormat.DEFAULT,
             ),
             # right_eef_pose
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
                 type=ActionType.EEF,
-                format=ActionFormat.XYZ_ROTVEC,
+                format=ActionFormat.DEFAULT,
             ),
             # left_hand_joints
             ActionConfig(
