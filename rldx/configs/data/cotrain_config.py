@@ -38,13 +38,13 @@ human = {
             # left_eef_pose: chunk expressed relative to the current EEF pose
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
-                type=ActionType.EEF,
+                type=ActionType.NON_EEF,
                 format=ActionFormat.DEFAULT,
             ),
             # right_eef_pose
             ActionConfig(
                 rep=ActionRepresentation.RELATIVE,
-                type=ActionType.EEF,
+                type=ActionType.NON_EEF,
                 format=ActionFormat.DEFAULT,
             ),
             # left_hand_joints
